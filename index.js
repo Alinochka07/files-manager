@@ -80,20 +80,28 @@ const renameFile = (oldPath, newPath) => {
 }
 
 const copyFile = (sourceFile, destinationFile) => {
-    return new Promise((resolve, reject) => {
-        const readStream = fs.createReadStream(sourceFile);
-        const writeStream = fs.createWriteStream(destinationFile);
+    const readStream = fs.createReadStream(sourceFile);
+    const writeStream = fs.createWriteStream(destinationFile);
 
-        readStream.on('error', reject);
-        writeStream.on('error', reject);
-
-        writeStream.on('finish', () => {
-            resolve();
-        });
-
-        readStream.pipe(writeStream);
-        console.log(`File copied successfully to ${destinationFile}`);
+    readStream.on('error', (error) => {
+        handleError(error);
+        console.error(`Error reading file ${sourceFile}`);
     });
+
+    writeStream.on('error', (error) => {
+        console.error(`Error writing to file ${destinationFile}: ${error}`);
+        fs.unlink(destinationFile, (unlinkError) => {
+            if (unlinkError) {
+                console.error(`Error removing partially copied file ${destinationFile}: ${unlinkError}`);
+            }
+            handleError();
+        });
+    });
+
+    writeStream.on('finish', () => {
+        console.log(`File copied successfully from ${sourceFile} to ${destinationFile}`);
+    });
+    readStream.pipe(writeStream);
 }
 
 const moveFile = async (sourceFile, movedFile) => {
@@ -102,7 +110,14 @@ const moveFile = async (sourceFile, movedFile) => {
         await fs.promises.unlink(sourceFile);
         console.log(`File moved successfully from ${sourceFile} to ${movedFile}`);
     } catch (error) {
-        handleError(error);
+        console.error(`Error moving file ${sourceFile} to ${movedFile}: ${error}`);
+        try {
+            await fs.promises.unlink(movedFile);
+            console.log(`Partially moved file ${movedFile} removed.`);
+        } catch (unlinkError) {
+            console.error(`Error removing partially moved file ${movedFile}: ${unlinkError}`);
+        }
+        handleError();
     }
 }
 
@@ -169,7 +184,7 @@ const main = () => {
         input: process.stdin,
         output: process.stdout
     });
-    readLine.setPrompt('Enter command: ');
+    readLine.setPrompt('\nEnter command: ');
     readLine.prompt();
 
     readLine.on('line', (input) => {
@@ -278,10 +293,15 @@ const main = () => {
     readLine.on('close', () => {
         console.log(`Thank you for using File Manager, ${username}, goodbye!`);
         process.exit(0);
-    })
+    });
+    readLine.on('error', (err) => {
+        console.error('An error occurred:');
+        console.error(err);
+        readLine.setPrompt('\nEnter command: ');
+        readLine.prompt();
+    });
 }
 
 console.log(`Welcome to the File Manager, ${username}!`);
-// printCurrentDirectory();
 main();
 
