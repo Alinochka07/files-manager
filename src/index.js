@@ -9,9 +9,9 @@ import { pipeline } from 'stream';
 
 
 const username = process.argv[2].replace('--username=', '');
-console.log(`Welcome to the File Manager, ${username}!\n`);
+// console.log(`Welcome to the File Manager, ${username}!\n`);
 
-const filesDirectory = path.join(__dirname, 'files');
+// const filesDirectory = path.join(__dirname, 'files');
 
 const printCurrentDirectory = () => {
     console.log(`You are currently in ${process.cwd()}`);
@@ -163,13 +163,6 @@ const main = () => {
                 break;
 
 
-                fs.stat(targetDir, (err, stats) => {
-                    err && handleError(err);
-                    !stats.isDirectory() && console.log(`${newDir} is not a directory`);
-                    process.chdir(targetDir);
-                    console.log(`Changed directory to ${targetDir}`);
-                });
-                break;
             case 'ls':
                 fileManagerContents();
                 break;
@@ -196,10 +189,46 @@ const main = () => {
                     case '--EOL':
                         getEOL();
                         break;
+                    case '--cpus':
+                        getCPUInfo();
+                        break;
+                    case '--homedir':
+                        getHomeDirectory();
+                        break;
+                    case '--username':
+                        getCurrentUsername();
+                        break;
+                    case '--architecture':
+                        getCPUArchitecture();
+                        break;
+                    default:
+                        console.log('Invalid input');
                 }
+                break;
+            case 'hash':
+                calculateHash(args[0], args[1]);
+                break;
+            case 'compress':
+                compressFile(args[0], args[1]);
+                break;
+            case 'decompress':
+                decompressFile(args[0], args[1]);
+                break;
+            default:
+                console.log('Invalid input');
         }
+        printCurrentDirectory();
+        readLine.prompt();
+    });
+    readLine.on('close', () => {
+        console.log(`Thank you for using File Manager, ${username} goodbye!`);
+        process.exit(0);
     })
 }
+
+console.log(`Welcome to the File Manager, ${username}!`);
+printCurrentDirectory();
+main();
 
 // const fileManager = {
 //     getOSInfo:() => {
