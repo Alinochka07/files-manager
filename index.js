@@ -2,16 +2,11 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import crypto from 'crypto';
-import zlib, { createGunzip, createGzip } from 'zlib';
+import { createGunzip, createGzip } from 'zlib';
 import readline from 'readline';
-import { __dirname, __fileName } from './pathHelper.js';
-import { pipeline } from 'stream';
 
 
 const username = process.argv[2].replace('--username=', '');
-// console.log(`Welcome to the File Manager, ${username}!\n`);
-
-// const filesDirectory = path.join(__dirname, 'files');
 
 const printCurrentDirectory = () => {
     console.log(`You are currently in ${process.cwd()}`);
@@ -99,7 +94,6 @@ const copyFile = (sourceFile, destinationFile) => {
         readStream.pipe(writeStream);
         console.log(`File copied successfully to ${destinationFile}`);
     });
-    // console.log(`File copied successfully to ${destinationFile}`);
 }
 
 const moveFile = async (sourceFile, movedFile) => {
@@ -266,7 +260,7 @@ const main = () => {
                     console.log('Invalid input');
             }
         }
-        // printCurrentDirectory();
+        printCurrentDirectory();
         readLine.prompt();
     });
     const closeProgram = () => {
