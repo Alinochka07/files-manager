@@ -187,24 +187,29 @@ const main = () => {
                     console.log(`Moved up to directory: ${parentDir}`);
                     break
                 case 'cd':
-                    args.length !==1 && console.log('Invalid input');
+                    if (args.length !== 1) {
+                        console.log('Invalid input');
+                        break;
+                    }
                     const newDir = args[0];
                     const targetDir = path.resolve(process.cwd(), newDir);
-    
+                
                     fs.stat(targetDir, (err, stats) => {
                         if (err) {
                             console.error('Operation failed');
                             console.error(err);
                         }
-    
+                
                         if (!stats.isDirectory()) {
                             console.log(`${newDir} is not a directory`);
+                        } else {
+                            process.chdir(targetDir);
+                            console.log(`Changed directory to ${targetDir}`);
+                            printCurrentDirectory();
                         }
-    
-                        process.chdir(targetDir);
+                        readLine.prompt();
                     });
-                    console.log(`Changed directory to ${targetDir}`);
-                    break;
+                    return;
                 case 'ls':
                     listDirectoryContents();
                     break;
