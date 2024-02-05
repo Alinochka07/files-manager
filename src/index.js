@@ -179,94 +179,105 @@ const main = () => {
     readLine.prompt();
 
     readLine.on('line', (input) => {
-        const [command, ...args] = input.trim().split(' ');
-        switch (command) {
-            case 'up':
-                const currentDir = process.cwd();
-                const parentDir = path.dirname(currentDir);
-
-                parentDir === currentDir && console.log('Already at the root directory');
-                process.chdir(parentDir);
-                console.log(`Moved up to directory: ${parentDir}`);
-                break
-            case 'cd':
-                args.length !==1 && console.log('Invalid input');
-                const newDir = args[0];
-                const targetDir = path.resolve(process.cwd(), newDir);
-
-                fs.stat(targetDir, (err, stats) => {
-                    if (err) {
-                        console.error('Operation failed');
-                        console.error(err);
+        if (input.trim() === '.exit') {
+            closeProgram();
+        } else {
+            const [command, ...args] = input.trim().split(' ');
+            switch (command) {
+                case 'up':
+                    const currentDir = process.cwd();
+                    const parentDir = path.dirname(currentDir);
+    
+                    parentDir === currentDir && console.log('Already at the root directory');
+                    process.chdir(parentDir);
+                    console.log(`Moved up to directory: ${parentDir}`);
+                    break
+                case 'cd':
+                    args.length !==1 && console.log('Invalid input');
+                    const newDir = args[0];
+                    const targetDir = path.resolve(process.cwd(), newDir);
+    
+                    fs.stat(targetDir, (err, stats) => {
+                        if (err) {
+                            console.error('Operation failed');
+                            console.error(err);
+                        }
+    
+                        if (!stats.isDirectory()) {
+                            console.log(`${newDir} is not a directory`);
+                        }
+    
+                        process.chdir(targetDir);
+                    });
+                    console.log(`Changed directory to ${targetDir}`);
+                    break;
+                case 'ls':
+                    listDirectoryContents();
+                    break;
+                case 'cat':
+                    readFileContent(args[0]);
+                    break;
+                case 'add':
+                    createNewFile(args[0]);
+                    break;
+                case 'rn':
+                    renameFile(args[0], args[1]);
+                    break;
+                case 'cp':
+                    copyFile(args[0], args[1]);
+                    break;
+                case 'mv':
+                    moveFile(args[0], args[1]);
+                    break;
+                case 'rm':
+                    deleteFile(args[0]);
+                    break;
+                case 'os':
+                    switch (args[0]) {
+                        case '--EOL':
+                            getEOL();
+                            break;
+                        case '--cpus':
+                            getCPUInfo();
+                            break;
+                        case '--homedir':
+                            getHomeDirectory();
+                            break;
+                        case '--username':
+                            getCurrentUsername();
+                            break;
+                        case '--architecture':
+                            getCPUArchitecture();
+                            break;
+                        default:
+                            console.log('Invalid input');
                     }
-
-                    if (!stats.isDirectory()) {
-                        console.log(`${newDir} is not a directory`);
-                    }
-
-                    process.chdir(targetDir);
-                });
-                console.log(`Changed directory to ${targetDir}`);
-                break;
-            case 'ls':
-                listDirectoryContents();
-                break;
-            case 'cat':
-                readFileContent(args[0]);
-                break;
-            case 'add':
-                createNewFile(args[0]);
-                break;
-            case 'rn':
-                renameFile(args[0], args[1]);
-                break;
-            case 'cp':
-                copyFile(args[0], args[1]);
-                break;
-            case 'mv':
-                moveFile(args[0], args[1]);
-                break;
-            case 'rm':
-                deleteFile(args[0]);
-                break;
-            case 'os':
-                switch (args[0]) {
-                    case '--EOL':
-                        getEOL();
-                        break;
-                    case '--cpus':
-                        getCPUInfo();
-                        break;
-                    case '--homedir':
-                        getHomeDirectory();
-                        break;
-                    case '--username':
-                        getCurrentUsername();
-                        break;
-                    case '--architecture':
-                        getCPUArchitecture();
-                        break;
-                    default:
-                        console.log('Invalid input');
-                }
-                break;
-            case 'hash':
-                calculateHash(args[0], args[1]);
-                break;
-            case 'compress':
-                compressFile(args[0], args[1]);
-                break;
-            case 'decompress':
-                decompressFile(args[0], args[1]);
-                break;
-            default:
-                console.log('Invalid input');
+                    break;
+                case 'hash':
+                    calculateHash(args[0], args[1]);
+                    break;
+                case 'compress':
+                    compressFile(args[0], args[1]);
+                    break;
+                case 'decompress':
+                    decompressFile(args[0], args[1]);
+                    break;
+                default:
+                    console.log('Invalid input');
+            }
         }
         // printCurrentDirectory();
         readLine.prompt();
     });
+    const closeProgram = () => {
+        console.log('Closing program...');
+        readLine.close();
+    };
+    process.on('SIGINT', () => {
+        closeProgram();
+    });
     readLine.on('close', () => {
-        console.log(`Thank you for using File Manager, ${username} goodbye!`);
+        console.log(`Thank you for using File Manager, ${username}, goodbye!`);
         process.exit(0);
     })
 }
