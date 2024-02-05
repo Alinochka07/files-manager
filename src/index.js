@@ -22,7 +22,7 @@ const handleError = (error) => {
     console.error(error);
 }
 
-const fileManagerContents = () => {
+const listDirectoryContents = () => {
     const files = fs.readdirSync(process.cwd()).sort();
     const directories = [];
     const fileList = [];
@@ -36,12 +36,26 @@ const fileManagerContents = () => {
             fileList.push(file);
         }
     });
-    console.log('Folders:');
-    directories.map(directory => console.log(`- ${directory}`));
-    console.log('Files:');
-    files.map(file => console.log(`- ${file}`));
+    directories.sort();
+    fileList.sort();
 
+    console.log('(index) |           Name           |      Type      ');
+    console.log('----------------------------------------------------');
+
+    directories.forEach((dir, index) => {
+        console.log(`${centerAlign(index.toString(), 8)}|${centerAlign(dir, 25)} |${centerAlign("'directory'", 15)}|`);
+    });
+
+    fileList.forEach((file, index) => {
+        console.log(`${centerAlign((directories.length + index).toString(), 8)}|${centerAlign(file, 25)} |${centerAlign("'file'", 15)}|`);
+    });
 };
+function centerAlign(text, width) {
+    const padding = width - text.length;
+    const paddingLeft = Math.floor(padding / 2);
+    const paddingRight = padding - paddingLeft;
+    return text.padStart(paddingLeft + text.length).padEnd(paddingRight + paddingLeft + text.length);
+}
 
 const readFileContent = (filePath) => {
     try {
@@ -56,42 +70,53 @@ const createNewFile = (fileName) => {
     fs.writeFileSync(fileName, '', err => {
         if (err) {
             handleError(err);
-        } else {
-            console.log(`File ${fileName} created successfully!`);
         }
     });
+    console.log(`File ${fileName} created successfully!`);
 }
 
 const renameFile = (oldPath, newPath) => {
     fs.rename(oldPath, newPath, err => {
-        err ? handleError(err) :  console.log(`File renamed successfully to ${newPath}`)
+        if (err) {
+            handleError(err);
+        }
     });
+    console.log(`File renamed successfully to ${newPath}`);
 }
 
 const copyFile = (sourceFile, destinationFile) => {
-    const readStream = fs.createReadStream(sourceFile);
-    const writeStream = fs.createWriteStream(destinationFile);
+    return new Promise((resolve, reject) => {
+        const readStream = fs.createReadStream(sourceFile);
+        const writeStream = fs.createWriteStream(destinationFile);
 
-    readStream.on('error', handleError);
-    writeStream.on('error', handleError);
+        readStream.on('error', reject);
+        writeStream.on('error', reject);
 
-    readStream.pipe(writeStream);
-    readStream.on('end', () => {
+        writeStream.on('finish', () => {
+            resolve();
+        });
+
+        readStream.pipe(writeStream);
         console.log(`File copied successfully to ${destinationFile}`);
-        fs.unlink(sourceFile, err => {
-            err && handleError(err);
-        })
     });
+    // console.log(`File copied successfully to ${destinationFile}`);
 }
 
-const moveFile = (sourceFile, movedFile) => {
-    copyFile(sourceFile, movedFile);
+const moveFile = async (sourceFile, movedFile) => {
+    try {
+        await copyFile(sourceFile, movedFile);
+        await fs.promises.unlink(sourceFile);
+        console.log(`File moved successfully from ${sourceFile} to ${movedFile}`);
+    } catch (error) {
+        handleError(error);
+    }
 }
 
 const deleteFile = (filePath) => {
     fs.unlink(filePath, err => {
-        err ? handleError(err) : console.log(`File ${filePath} deleted successfully`);
+        err && handleError(err);
     });
+    console.log(`File ${filePath} deleted successfully`);
 }
 
 const getEOL = () => {
@@ -117,7 +142,7 @@ const getCPUArchitecture = () => {
     console.log(`CPU Architecture: ${os.arch()}`);
 }
 
-const calculateHash = () => {
+const calculateHash = (filePath) => {
     const hash = crypto.createHash('sha256');
     const input = fs.createReadStream(filePath);
     input.on('data', chunk => {
@@ -134,6 +159,7 @@ const compressFile = (source, destination) => {
     const inputStream = fs.createReadStream(source);
     const outputStream = fs.createWriteStream(destination + '.gz');
     inputStream.pipe(gzip).pipe(outputStream);
+    console.log(`File compressed successfully ${destination}.gz`);
 }
 
 const decompressFile = (source, destination) => {
@@ -141,6 +167,7 @@ const decompressFile = (source, destination) => {
     const inputStream = fs.createReadStream(source);
     const outputStream = fs.createWriteStream(destination);
     inputStream.pipe(gunzip).pipe(outputStream);
+    console.log(`File decompressed successfully. Check: ${destination}`)
 }
 
 const main = () => {
@@ -155,16 +182,34 @@ const main = () => {
         const [command, ...args] = input.trim().split(' ');
         switch (command) {
             case 'up':
-                const upperDirectory = path.join(__dirname, '../');
-                console.log(`You are in ${upperDirectory} now`);
+                const currentDir = process.cwd();
+                const parentDir = path.dirname(currentDir);
+
+                parentDir === currentDir && console.log('Already at the root directory');
+                process.chdir(parentDir);
+                console.log(`Moved up to directory: ${parentDir}`);
                 break
             case 'cd':
                 args.length !==1 && console.log('Invalid input');
+                const newDir = args[0];
+                const targetDir = path.resolve(process.cwd(), newDir);
+
+                fs.stat(targetDir, (err, stats) => {
+                    if (err) {
+                        console.error('Operation failed');
+                        console.error(err);
+                    }
+
+                    if (!stats.isDirectory()) {
+                        console.log(`${newDir} is not a directory`);
+                    }
+
+                    process.chdir(targetDir);
+                });
+                console.log(`Changed directory to ${targetDir}`);
                 break;
-
-
             case 'ls':
-                fileManagerContents();
+                listDirectoryContents();
                 break;
             case 'cat':
                 readFileContent(args[0]);
@@ -217,7 +262,7 @@ const main = () => {
             default:
                 console.log('Invalid input');
         }
-        printCurrentDirectory();
+        // printCurrentDirectory();
         readLine.prompt();
     });
     readLine.on('close', () => {
@@ -227,87 +272,6 @@ const main = () => {
 }
 
 console.log(`Welcome to the File Manager, ${username}!`);
-printCurrentDirectory();
+// printCurrentDirectory();
 main();
-
-// const fileManager = {
-//     getOSInfo:() => {
-//         console.log('Operating System Information:');
-//         console.log(`  Type: ${os.type()}`);
-//         console.log(`  Platform: ${os.platform()}`);
-//         console.log(`  Release: ${os.release()}`);
-//         console.log(`  Architecture: ${os.arch()}`);
-//         console.log(`  Total Memory: ${os.totalmem()} bytes`);
-//         console.log(`  Free Memory: ${os.freemem()} bytes\n`);
-//     },
-
-//     // file operations
-//     copyFile:(source, destination) => {
-//         fs.copyFileSync(source, destination);
-//         console.log(`✅ File copied successfully from ${source} to ${destination}`);
-//     },
-
-//     moveFile:(source, destination) => {
-//         fs.renameSync(source, destination);
-//         console.log(`\n✅ File moved successfully from ${source} to ${destination}`);
-//     },
-
-//     deleteFile:(filePath) => {
-//         fs.unlinkSync(filePath);
-//         console.log(`\n✅ File ${filePath} deleted successfully`);
-//     },
-
-//     renameFile:(oldPath, newPath) => {
-//         fs.renameSync(oldPath, newPath);
-//         console.log(`\n✅ File renamed successfully from ${oldPath} to ${newPath}`);
-//     },
-
-//     // Hash
-//     calculateHash:(filePath, algorithm = 'sha256') => {
-//         const hash = crypto.createHash(algorithm);
-//         const fileData = fs.readFileSync(filePath);
-//         hash.update(fileData);
-//         console.log(`\n✅ Hash (${algorithm}) of ${filePath}: ${hash.digest('hex')}`);
-//     },
-
-//     // Compress and decompress
-//     compressFile: (source, destination) => {
-//         const gzip = createGzip();
-//         const inputStream = fs.createReadStream(source);
-//         const outputStream = fs.createWriteStream(destination);
-
-//         pipeline(inputStream, gzip, outputStream, (err) => {
-//         if (err) {
-//             console.error('An error occurred:', err);
-//             process.exitCode = 1;
-//         } else {
-//             console.log(`✅ File successfully compressed to ${destination} file`);
-//             fileManager.decompressFile(destination, 'decompressed.txt');
-//         }
-//         });
-        
-//     },
-
-//     decompressFile: (source, destination) => {
-//         try {
-//             const buffer = fs.readFileSync(source);
-//             const decompressedBuffer = zlib.unzipSync(buffer, { finishFlush: zlib.constants.Z_SYNC_FLUSH });
-//             const outputPath = path.join(filesDirectory, destination);
-//             fs.writeFileSync(outputPath, decompressedBuffer);
-//             console.log(`✅ File decompressed successfully to ${outputPath}`);
-//         } catch (err) {
-//             console.error('An error occurred:', err);
-//             process.exitCode = 1;
-//         };
-//     }
-// };
-
-
-// fileManager.getOSInfo();
-// fileManager.copyFile(path.join(filesDirectory, 'source.txt'), path.join(filesDirectory, 'destination.txt'));
-// fileManager.moveFile(path.join(filesDirectory, 'source.txt'), path.join(filesDirectory, 'moved.txt'));
-// fileManager.deleteFile(path.join(filesDirectory, 'delete.txt'));
-// fileManager.renameFile(path.join(filesDirectory, 'oldName.txt'), path.join(filesDirectory, 'newName.txt'));
-// fileManager.calculateHash(path.join(filesDirectory, 'file.txt'));
-// fileManager.compressFile(path.join(filesDirectory, 'file.txt'), path.join(filesDirectory, 'compressed.gz'));
 
